@@ -12,12 +12,30 @@ dataSheet = wb2['Courses']
 
 class Course:
 
-    def __init__(self, code, name, section, examDate, examTime):
+    def __init__(self, code):
         self.__code = code
-        self.__name = name
-        self.__sectionList = section      #This whould be a list of section object (aggregation)
-        self.__examDates = examDate
-        self.__examTime = examTime
+        # self.__name = name
+        # self.__sectionList = section      #This whould be a list of section object (aggregation)
+        # self.__examDates = examDate
+        # self.__examTime = examTime
+        self.__sectionList = []
+
+        for code,name,examDate,examTime in ws1.rows:
+            if code.value == code:
+                self.__name = name.value
+                self.__examDates = examDate.value
+                self.__examTime = examTime.value
+                self.__sectionList = []
+
+        for i in range(2,ws2.max_row+1):
+            l = []
+            if ws2.cell(row=i,column=1) == code:
+                for j in range(1,3):
+                    d = j.value
+                    l.append(d)
+            if(len(l)!=0):
+                section = Section(l[0],l[1])
+                self.__sectionList.append(section)
 
     def get_code(self):
         return self.__code
@@ -66,23 +84,26 @@ class Course:
                     proff = input("Enter the professor " + str(j+1) + "for" + type + " " + str(i+1) +": ")
                     proffList.append(proff)
                     proffStr += proff + ','
-                section = Section(self.__code, sectionNumber, hourList, daysList, venue, proffList)
-                self.__sectionList.append(section)
-                row = [self.__code, type, hourStr, daysStr, venue, proffStr]
+                row = [self.__code, sectionNumber, hourStr, daysStr, venue, proffStr]
                 ws2.append(row)
                 wb.save(myData)
+                section = Section(self.__code, sectionNumber)
+                self.__sectionList.append(section)
+                print("Section has been added successfully.")
         else:
             print("\nWrong Pin.\n")
 
 class Section():
 
-    def __init__(self, code, sectionNo, hour, day, venue, proff):
+    def __init__(self, code, sectionNo):
         self.__code = code
         self.__sectionNo = sectionNo
-        self.__timing = hour    #1st hour is 8 to 9, 2nd is 9 to 10 and so on.
-        self.__day = day    #list of lecture days in a week.
-        self.__venue = venue
-        self.__proff = proff
+        for code1, sectionNumber, hour, day, venue, proff in ws2.rows:
+            if code1.value == code and sectionNumber.value == sectionNo :
+                self.__timing = hour.value.split(',')
+                self.__day = day.value.split(',')
+                self.__venue = venue.value
+                self.__proff = proff.value.split(',')
 
     def get_info(self):
         data = {"code":self.__code,
@@ -179,10 +200,48 @@ def populate_course(password):
     else:
         print("Wrong Pin.")
 
+def get_all_courses():
+    l=[]
+    for i in range(2,ws1.max_row+1):
+        a = ws1.cell(row=i,column=1)
+        l.append(a.value)
+    return l
+
 def menu():
     print('Welcome to the Time Table Manager.')
     password = input("Please Set your admin Password: ")
-    print('''
-1. Add Courses to the database.
-2. Add Section(s) to a course.
+    print("\nYour admin password has been set.\n")
+    nav = ('''
+1.  Add Courses to the database.
+2.  Add Section(s) to a Course.
+3.  Enroll to a Course.
+4.  Withdraw Form a Course.
+5.  See list of enrolled Courses.
+6.  See List of Available Courses.
+7.  See List of all the sections of a given Course.
+8.  See Details of a Course.
+9.  See Details of a Section of a Course.
+10. See Current Time Table.
+11. Get Time Table CSV File.
+12. Exit
 ''')
+    print(nav)
+    choice = int(input("Enter your choice: "))
+    
+    if(choice == 1):
+        populate_course(password)
+
+    elif(choice == 2):
+        print("These are the Courses: ")
+        L = get_all_courses()
+        print(L)
+        code = input("Which Course do you want to add a section in: ")
+        course1 = Course(code)
+        sectionType = input("What type of section do you want to add?\nL for Lecture\nT for Tutorial\nP for Laboratory. ")
+        nSection = int(input("How many sections do you want to add? "))
+        course1.populate_section(sectionType,nSection,password)
+
+    elif(choice == 3):
+        pass
+
+menu()
