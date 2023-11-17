@@ -1,5 +1,6 @@
 import openpyxl
 import datetime
+import csv
 
 myData = 'MyDatabase.xlsx'
 wb = openpyxl.load_workbook(myData)
@@ -12,8 +13,8 @@ dataSheet = wb2['Courses']
 
 class Course:
 
-    def __init__(self, code):
-        self.__code = code
+    def __init__(self, courseCode):
+        self.__code = courseCode
         # self.__name = name
         # self.__sectionList = section      #This whould be a list of section object (aggregation)
         # self.__examDates = examDate
@@ -21,7 +22,7 @@ class Course:
         self.__sectionList = []
 
         for code,name,examDate,examTime in ws1.rows:
-            if code.value == code:
+            if code.value == courseCode:
                 self.__name = name.value
                 self.__examDates = examDate.value
                 self.__examTime = examTime.value
@@ -29,13 +30,13 @@ class Course:
 
         for i in range(2,ws2.max_row+1):
             l = []
-            if ws2.cell(row=i,column=1) == code:
+            if ws2.cell(row=i,column=1).value == courseCode:
                 for j in range(1,3):
-                    d = j.value
+                    d = ws2.cell(row=i,column=j).value
                     l.append(d)
-            if(len(l)!=0):
-                section = Section(l[0],l[1])
-                self.__sectionList.append(section)
+                if(len(l) != 0):
+                    section = Section(l[0],l[1])
+                    self.__sectionList.append(section)
 
     def get_code(self):
         return self.__code
@@ -60,14 +61,18 @@ class Course:
         tryPass = input("Enter the admin password: ")
         if tryPass == password:
             for i in range (number):
-                sectionNumber = type[0] + str(len(self.__sectionList)+1)
+                counter = 1
+                for i in self.__sectionList:
+                    if (i.get_info()["sectionNo"][0] == type):
+                        counter+=1
+                sectionNumber = type[0] + str(counter)
                 nHour = int(input("Enter the number of hours: "))
                 hourList = []
-                hourStr = ''
+                hourStr = 0
                 hour = int(input("Enter the starting Hour: "))
                 for i in range(nHour):
                     hourList.append(hour)
-                    hourStr += str(hour) +','
+                    hourStr = hourStr*10 + hour
                     hour+=1
                 nDays = int(input("Enter the number of days in the section: "))
                 daysList = []
@@ -84,6 +89,8 @@ class Course:
                     proff = input("Enter the professor " + str(j+1) + "for" + type + " " + str(i+1) +": ")
                     proffList.append(proff)
                     proffStr += proff + ','
+                daysStr = daysStr[0:-1]
+                proffStr = proffStr[0:-1]
                 row = [self.__code, sectionNumber, hourStr, daysStr, venue, proffStr]
                 ws2.append(row)
                 wb.save(myData)
@@ -100,7 +107,7 @@ class Section():
         self.__sectionNo = sectionNo
         for code1, sectionNumber, hour, day, venue, proff in ws2.rows:
             if code1.value == code and sectionNumber.value == sectionNo :
-                self.__timing = hour.value.split(',')
+                self.__timing = hour.value
                 self.__day = day.value.split(',')
                 self.__venue = venue.value
                 self.__proff = proff.value.split(',')
@@ -136,36 +143,68 @@ class TimeTable:
             days[i] = week[days[i]]
         hours = sectionDetails["timing"]
         indices = []
-        for i in hours:
+        a = int(hours)
+        while(a>0):
+            i = a%10 - 1
+            a = a//10
             for j in days:
-                if self.table[i][j]==0:
+                if self.table[j][i]==0:
+                    print(i,end=',')
+                    print(j)
                     indices.append([i,j])
                 else:
                     print("\nClash Between Courses. " + str(self.table[i][j]) + " already at this slot.\n")
                     return
+        self.table[3][0] = courseDetails["code"]
         for i,j in indices:
-            self.table[i][j] = courseDetails["code"]
+            print(i,end=',')
+            print(j)
+            # self.table[3][0] = courseDetails["code"]
+            print(self.table)
         print("\nSuccessfully Enrolled.\n")
         self.__listOfCourses.append(course)
+        self.export_to_csv('timetable.csv')
 
-    def withdraw_subject(self,course):
-        for i in range(0,9):
-            for j in range(0,6):
-                if self.table[i][j] == course.__code:
+    def withdraw_course(self,course):
+        for i in range(0,6):
+            for j in range(0,9):
+                # print('i = ' + str(i))
+                if self.table[i][j] == course.get_code():
                     self.table[i][j] = 0
                     print("You have sucessfully withdrawn from the course")
-                else:
-                    print("You were not enrolled into this course.")
+                    return
+        print("You were not enrolled into this course.")
 
     def show_courses(self):
         for i in self.__listOfCourses:
             print(i.get_info())
 
-    def __str__(self):
-        pass
+    def get_courses(self):
+        return self.__listOfCourses
+
+    def print_timetable(self):
+        rows = []
+        with open('timetable.csv', 'r') as csvfile:
+            csvReader = csv.reader(csvfile)
+            for row in csvReader:
+                rows.append(row)
+
+            for row in rows:
+                for col in row:
+                    print("%10s"%col,end=" ")
+                print('\n')
 
     def export_to_csv(self,file):
-        pass
+        with open(file, 'w') as csvfile:
+            csvWriter = csv.writer(csvfile)
+            fields = [1,2,3,4,5,6,7,8,9]
+            csvWriter.writerow(fields)
+            # week = ['M','T','W','Th','F','S']
+            # j=0
+            for i in self.table:
+                # i.append(week[j])
+                csvWriter.writerow(i)
+                # j+=1
 
 def populate_course(password):
     tryPass = input("Enter the admin password: ")
@@ -207,41 +246,104 @@ def get_all_courses():
         l.append(a.value)
     return l
 
-def menu():
+def menu(tt):
     print('Welcome to the Time Table Manager.')
     password = input("Please Set your admin Password: ")
     print("\nYour admin password has been set.\n")
-    nav = ('''
-1.  Add Courses to the database.
-2.  Add Section(s) to a Course.
-3.  Enroll to a Course.
-4.  Withdraw Form a Course.
-5.  See list of enrolled Courses.
-6.  See List of Available Courses.
-7.  See List of all the sections of a given Course.
-8.  See Details of a Course.
-9.  See Details of a Section of a Course.
-10. See Current Time Table.
-11. Get Time Table CSV File.
-12. Exit
-''')
-    print(nav)
-    choice = int(input("Enter your choice: "))
-    
-    if(choice == 1):
-        populate_course(password)
+    choice = 0
+    while(choice != 11):
+        nav = ('''
+    1.  Add Courses to the database.
+    2.  Add Section(s) to a Course.
+    3.  Enroll to a Course.
+    4.  Withdraw Form a Course.
+    5.  See list of enrolled Courses.
+    6.  See List of all the sections of a given Course.
+    7.  See Details of a Course.
+    8.  See Details of a Section of a Course.
+    9.  See Current Time Table.
+    10. Get Time Table as CSV File.
+    11. Exit
+    ''')
+        print(nav)
+        choice = int(input("Enter your choice: "))
+        
+        if(choice == 1):
+            populate_course(password)
 
-    elif(choice == 2):
-        print("These are the Courses: ")
-        L = get_all_courses()
-        print(L)
-        code = input("Which Course do you want to add a section in: ")
-        course1 = Course(code)
-        sectionType = input("What type of section do you want to add?\nL for Lecture\nT for Tutorial\nP for Laboratory. ")
-        nSection = int(input("How many sections do you want to add? "))
-        course1.populate_section(sectionType,nSection,password)
+        elif(choice == 2):
+            print("These are the Courses: ")
+            l = get_all_courses()
+            print(l)
+            code = input("Which Course do you want to add a section in: ")
+            course1 = Course(code)
+            sectionType = input("What type of section do you want to add?\nL for Lecture\nT for Tutorial\nP for Laboratory. ")
+            nSection = int(input("How many sections do you want to add? "))
+            course1.populate_section(sectionType,nSection,password)
 
-    elif(choice == 3):
-        pass
+        elif(choice == 3):
+            lCourse = get_all_courses()
+            print(lCourse)
+            courseCode = input("Enter the Code of the course you want to enroll into: ")
+            course = Course(courseCode)
+            course.print_all_sections()
+            sectionCode = input("Enter the Section Code of the section you want to Enroll into: ")
+            section = Section(courseCode,sectionCode)
+            tt.enroll_subject(course,section)
 
-menu()
+        elif(choice == 4):
+            lCourse = tt.get_courses()
+            if(len(lCourse) == 0):
+                print("You are not enrolled in any course currently.")
+            else:
+                for i in lCourse:
+                    print(i.get_code())
+                courseCode = input("Enter the Code of the course you want to enroll into: ")
+                course = Course(courseCode)
+                tt.withdraw_course(course)
+        
+        elif(choice == 5):
+            print("These are the list of all the courses you have enrolled in: ")
+            lCourse = tt.get_courses()
+            if(len(lCourse) == 0):
+                print("You are not enrolled in any course currently.")
+            else:
+                print(lCourse)
+
+        elif(choice == 6):
+            lCourse = get_all_courses()
+            print(lCourse)
+            courseCode = input("Enter the code of the course you want to see the sections of: ")
+            course1 = Course(courseCode)
+            course1.print_all_sections()
+
+        elif(choice == 7):
+            lCourse = get_all_courses()
+            print(lCourse)
+            courseCode = input("Enter the code of the course you want to see the sections of: ")
+            course1 = Course(courseCode)
+            details = course1.get_info()
+            print(details)
+
+        elif(choice == 8):
+            lCourse = get_all_courses()
+            print(lCourse)
+            courseCode = input("Enter the code of the course you want to see the sections of: ")
+            course1 = Course(courseCode)
+            course1.print_all_sections()
+            sectionCode = input("Enter the Section Code of the section you want to Enroll into: ")
+            section = Section(courseCode,sectionCode)
+            details = section.get_info()
+            print(details)
+
+        elif(choice == 9):
+            tt.print_timetable()
+
+        elif(choice == 10):
+            fileName = input("Enter the file name in which you want to save the timetable: ")
+            fileName = fileName + '.csv'
+            file = open(fileName,'a')
+            tt.export_to_csv(file)
+
+tt = TimeTable()
+menu(tt)
