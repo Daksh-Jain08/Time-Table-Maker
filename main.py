@@ -127,7 +127,8 @@ class Section():
 class TimeTable:
 
     def __init__(self):
-        self.table = [[0]*9]*6
+        rows, cols = (6, 9)
+        self.table = [[0 for i in range(cols)] for j in range(rows)]
         self.__listOfCourses = []
 
     def enroll_subject(self,course,section):
@@ -149,32 +150,34 @@ class TimeTable:
             a = a//10
             for day in days:
                 if self.table[day][hour]==0:
-                    print(hour,end=',')
-                    print(day)
                     indices.append([day,hour])
                 else:
-                    print("\nClash Between Courses. " + str(self.table[i][j]) + " already at this slot.\n")
+                    print("\nClash Between Courses. " + str(self.table[day][hour]) + " already at this slot.\n")
                     return
-        # self.table[3][0] = courseDetails["code"]
         for day,hour in indices:
-            print('inside')
-            print(day,end=',')
-            print(hour)
             self.table[day][hour] = courseDetails["code"]
-            print(self.table)
         print("\nSuccessfully Enrolled.\n")
         self.__listOfCourses.append(course)
         self.export_to_csv('timetable.csv')
 
     def withdraw_course(self,course):
-        for i in range(0,6):
-            for j in range(0,9):
+        flag = 1
+        for day in range(0,6):
+            for hour in range(0,9):
                 # print('i = ' + str(i))
-                if self.table[i][j] == course.get_code():
-                    self.table[i][j] = 0
-                    print("You have sucessfully withdrawn from the course")
-                    return
-        print("You were not enrolled into this course.")
+                if self.table[day][hour] == course.get_code():
+                    print(course.get_code())
+                    print(day,end='')
+                    print(hour)
+                    self.table[day][hour] = 0
+                    print(self.table)
+                    flag = 0
+        if(flag==0):
+            self.__listOfCourses.remove(course.get_code())
+            print("You have sucessfully withdrawn from the course")
+        else:
+            print("You were not enrolled into this course.")
+        self.export_to_csv('timetable.csv')
 
     def show_courses(self):
         for i in self.__listOfCourses:
@@ -237,6 +240,7 @@ def populate_course(password):
                     row.append(dataSheet.cell(row=i,column=j).value)
                 ws1.append(row)
                 wb.save(myData)
+                print("The course has been added to the database.")
     else:
         print("Wrong Pin.")
 
@@ -304,12 +308,13 @@ def menu(tt):
                 tt.withdraw_course(course)
         
         elif(choice == 5):
-            print("These are the list of all the courses you have enrolled in: ")
             lCourse = tt.get_courses()
             if(len(lCourse) == 0):
                 print("You are not enrolled in any course currently.")
             else:
-                print(lCourse)
+                print("These are the list of all the courses you have enrolled in: ")
+                for course in lCourse:
+                    print(course.get_code())
 
         elif(choice == 6):
             lCourse = get_all_courses()
@@ -331,8 +336,12 @@ def menu(tt):
             print(lCourse)
             courseCode = input("Enter the code of the course you want to see the sections of: ")
             course1 = Course(courseCode)
-            course1.print_all_sections()
-            sectionCode = input("Enter the Section Code of the section you want to Enroll into: ")
+            sectionList = course1.get_sections()
+            for section in sectionList:
+                sectionNo = section.get_info()['sectionNo']
+                print(sectionNo, end=',')
+            print('\n')
+            sectionCode = input("Enter the Section Code of the section you want the details about: ")
             section = Section(courseCode,sectionCode)
             details = section.get_info()
             print(details)
@@ -341,10 +350,8 @@ def menu(tt):
             tt.print_timetable()
 
         elif(choice == 10):
-            fileName = input("Enter the file name in which you want to save the timetable: ")
-            fileName = fileName + '.csv'
-            file = open(fileName,'a')
-            tt.export_to_csv(file)
+            print('Your Time Table has been exported to mytt.csv file')
+            tt.export_to_csv('mytt.csv')
 
 tt = TimeTable()
 menu(tt)
