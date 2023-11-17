@@ -145,21 +145,22 @@ class TimeTable:
         indices = []
         a = int(hours)
         while(a>0):
-            i = a%10 - 1
+            hour = a%10 - 1
             a = a//10
-            for j in days:
-                if self.table[j][i]==0:
-                    print(i,end=',')
-                    print(j)
-                    indices.append([i,j])
+            for day in days:
+                if self.table[day][hour]==0:
+                    print(hour,end=',')
+                    print(day)
+                    indices.append([day,hour])
                 else:
                     print("\nClash Between Courses. " + str(self.table[i][j]) + " already at this slot.\n")
                     return
-        self.table[3][0] = courseDetails["code"]
-        for i,j in indices:
-            print(i,end=',')
-            print(j)
-            # self.table[3][0] = courseDetails["code"]
+        # self.table[3][0] = courseDetails["code"]
+        for day,hour in indices:
+            print('inside')
+            print(day,end=',')
+            print(hour)
+            self.table[day][hour] = courseDetails["code"]
             print(self.table)
         print("\nSuccessfully Enrolled.\n")
         self.__listOfCourses.append(course)
@@ -347,3 +348,6 @@ def menu(tt):
 
 tt = TimeTable()
 menu(tt)
+fileName = 'timetable.csv'
+f = open(fileName, "w+")
+f.close()
